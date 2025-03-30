@@ -14,6 +14,7 @@ def sample_frames_from_video(video_path, image_root, max_num_frames):
     # --- Handle video ---
     video_name = video_path.split('/')[-1].split('.')[0]
     image_dir = os.path.join(image_root, video_name)
+    os.makedirs(image_dir, exist_ok=True)
 
     vs = cv2.VideoCapture(video_path)
     fps = vs.get(cv2.CAP_PROP_FPS)
@@ -22,6 +23,7 @@ def sample_frames_from_video(video_path, image_root, max_num_frames):
 
     count = 0
     video_frame_num = 0
+    image_paths = []
     while True:
         gotit, frame = vs.read()
         if not gotit:
@@ -40,14 +42,20 @@ def sample_frames_from_video(video_path, image_root, max_num_frames):
     # Sort final images for gallery
     image_paths = sorted(image_paths)
 
+    return image_paths
+
 
 ######################
 
+video_name = 'vecteezy_a-man-plays-basketball-alone-in-a-public-area-having-fun_46467372'
+video_path = f'/projects_vol/gp_slab/tianxing001/project/vggt/examples/videos/{video_name}.mp4'
+image_root = '/projects_vol/gp_slab/tianxing001/project/vggt/examples/video_frames'
+# max_num_frames = 200
+max_num_frames = 100
 
-video_path = '/mnt/petrelfs/sichenyang.p/txwu/dataset/human_videos/vecteezy/dance/12002501-young-hip-couple-with-tattoos-embrace-on-a-city-street.mp4'
-image_root = '/mnt/petrelfs/sichenyang.p/txwu/project/vggt/examples/sampled_frames'
-max_num_frames = 200
 
+save_root = f'/projects_vol/gp_slab/tianxing001/project/vggt/outputs/{video_name}'
+os.makedirs(save_root)
 
 
 # device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -102,8 +110,12 @@ with torch.no_grad():
     #                                     [60.72, 259.94]]).to(device)
     # track_list, vis_score, conf_score = model.track_head(aggregated_tokens_list, images, ps_idx, query_points=query_points[None])
 
-
-    for i, point_map in enumerate(point_maps):
+    
+    
+    point_maps = point_maps[0].cpu().numpy()
+    point_maps_normalized = (point_maps - point_maps.min()) / (point_maps.max() - point_maps.min())  # normalize
+    point_imgs = []
+    for i, point_map in enumerate(point_maps_normalized):
         # Normalize each coordinate (assuming already normalized between 0 and 1)
         point_map_rgb = (point_map * 255).astype(np.uint8)  # Scale to 0-255 for RGB mapping
 
@@ -115,6 +127,24 @@ with torch.no_grad():
         # Convert BGR (OpenCV default) to RGB for visualization
         img = cv2.cvtColor(point_map_rgb, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
-        images.append(img)
+        point_imgs.append(img)
     # images[0].save(f'{outdir}/_pointmaps.gif', save_all=True, append_images=images[1:], duration=100, loop=0)
-    images[0].save(f'_pointmaps.gif', save_all=True, append_images=images[1:], duration=100, loop=0)
+    point_imgs[0].save(f'{save_root}/pointmaps.gif', save_all=True, append_images=point_imgs[1:], duration=100, loop=0)
+
+    point_map_by_unprojections_normalized = (point_maps_by_unprojection - point_maps_by_unprojection.min()) / (point_maps_by_unprojection.max() - point_maps_by_unprojection.min())  # normalize
+    point_imgs = []
+    for i, point_map in enumerate(point_map_by_unprojections_normalized):
+        # Normalize each coordinate (assuming already normalized between 0 and 1)
+        point_map_rgb = (point_map * 255).astype(np.uint8)  # Scale to 0-255 for RGB mapping
+
+        # Convert (H, W, 3) into an RGB image
+        # # save pointmaps per frame
+        # img_path = f'{outdir}/pointmap_frame_{i:04d}.png'
+        # cv2.imwrite(img_path, point_map_rgb)
+
+        # Convert BGR (OpenCV default) to RGB for visualization
+        img = cv2.cvtColor(point_map_rgb, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(img)
+        point_imgs.append(img)
+    # images[0].save(f'{outdir}/_pointmaps.gif', save_all=True, append_images=images[1:], duration=100, loop=0)
+    point_imgs[0].save(f'{save_root}/pointmaps_by_unprojection.gif', save_all=True, append_images=point_imgs[1:], duration=100, loop=0)  

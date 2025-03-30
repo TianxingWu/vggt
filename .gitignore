@@ -144,3 +144,6 @@ dmypy.json
 **/tmp/
 **/outputs/skyseg.onnx
 skyseg.onnx
+
+examples/video_frames
+outputs
